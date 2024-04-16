@@ -1,52 +1,55 @@
-import { AccessToken } from './../../node_modules/mongodb/src/cmap/auth/mongodb_oidc/machine_workflow';
 import { NextFunction, Request, Response } from "express";
 import createHttpError from "http-errors";
-import userModel from "./userModel";
 import bcrypt from "bcrypt";
+import userModel from "./userModel";
 import { sign } from "jsonwebtoken";
 import { config } from "../config/config";
+import { User } from "./userTypes";
 
+const createUser = async (req: Request, res: Response, next: NextFunction) => {
+  const { name, email, password } = req.body;
 
+  // Validation
+  if (!name || !email || !password) {
+    const error = createHttpError(400, "All fields are required");
+    return next(error);
+  }
 
-const createUser = async (req:Request,res:Response,next:NextFunction) =>{
-
-    const {name, email, password} = req.body;
-
-    //Validataion
-    if (!name || !email || !password) {
-        
-        const error = createHttpError(400,"All fields are required.");
-
-        return next(error);
-    }
-
-    //database call 
-
-    const user = await userModel.findOne({email});
-
+  try {
+    // Check if user already exists
+    const user = await userModel.findOne({ email });
     if (user) {
-
-        const error = createHttpError(400, "User already exist with ths email.");
-
-        return next (error);
-
+      const error = createHttpError(400, "User already exists with this email.");
+      return next(error);
     }
 
-    //password --> hash
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const hasedPassword = await bcrypt.hash(password, 10);
+    // Create new user
+    let newUser: User;
+    newUser = await userModel.create({
+      name,
+      email,
+      password: hashedPassword,
+    });
 
-    const newUser = await userModel.create({
-        name, email, password: hasedPassword,
-    })
+    // Generate JWT token
+    const token = sign({ sub: newUser._id }, config.jwtSecret as string, {
+      expiresIn: "7d",
+      algorithm: "HS256",
+    });
 
-    // token generation
+    // Send response
+    res.status(201).json({ accessToken: token });
+  } catch (err) {
+    if (err instanceof createHttpError.HttpError) {
+      return next(err);
+    }
+    return next(createHttpError(500, "Internal server error."));
+  }
+};
 
-    const token = sign({sub: newUser._id}, config.jwtSecret as string, {expiresIn: "7d", algorithm:"HS256"});
 
-    //Response
 
-    res.json({accessToken: token});
-}
-
-export {createUser};
+export { createUser};
