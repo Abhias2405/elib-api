@@ -44,7 +44,6 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
 
         const _req = req as AuthRequest;
 
-
         const newBook = await bookModel.create({
             title,
             description,
@@ -144,8 +143,23 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
 
 const listBooks = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const books = await bookModel.find().populate("author", "name");
-        res.json(books);
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const skipIndex = (page - 1) * limit;
+
+        const totalBooks = await bookModel.countDocuments();
+        const books = await bookModel
+            .find()
+            .populate("author", "name")
+            .skip(skipIndex)
+            .limit(limit);
+
+        res.json({
+            books,
+            currentPage: page,
+            totalPages: Math.ceil(totalBooks / limit),
+            totalBooks
+        });
     } catch (err) {
         console.error("Error during fetching books:", err);
         return next(createHttpError(500, "Error while fetching the books."));
@@ -159,6 +173,7 @@ const getSingleBook = async (req: Request, res: Response, next: NextFunction) =>
         const book = await bookModel
             .findOne({ _id: bookId })
             .populate("author", "name");
+        
         if (!book) {
             return next(createHttpError(404, "Book not found."));
         }
@@ -170,6 +185,46 @@ const getSingleBook = async (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
+const deleteBook = async (req: Request, res: Response, next: NextFunction) => {
+    const bookId = req.params.bookId;
 
+    try {
+        const book = await bookModel.findOne({ _id: bookId });
+        if (!book) {
+            return next(createHttpError(404, "Book not found"));
+        }
 
-export { createBook, updateBook, listBooks, getSingleBook};
+        const _req = req as AuthRequest;
+        if (book.author.toString() !== _req.userId) {
+            return next(createHttpError(403, "You cannot delete another's book."));
+        }
+
+        const coverFileSplits = book.coverImage.split("/");
+        const coverImagePublicId =
+            coverFileSplits.at(-2) +
+            "/" +
+            coverFileSplits.at(-1)?.split(".").at(-2);
+
+        const bookFileSplits = book.file.split("/");
+        const bookFilePublicId =
+            bookFileSplits.at(-2) +
+            "/" +
+            bookFileSplits.at(-1)?.split(".").at(-2);
+
+        // Delete files from Cloudinary
+        await cloudinary.uploader.destroy(coverImagePublicId);
+        await cloudinary.uploader.destroy(bookFilePublicId, {
+            resource_type: "raw",
+        });
+
+        // Delete book from database
+        await bookModel.deleteOne({ _id: bookId });
+
+        res.sendStatus(204);
+    } catch (err) {
+        console.error("Error during book deletion:", err);
+        return next(createHttpError(500, "Error while deleting the book."));
+    }
+};
+
+export { createBook, updateBook, listBooks, getSingleBook, deleteBook };
