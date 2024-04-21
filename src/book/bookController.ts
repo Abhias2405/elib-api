@@ -86,7 +86,17 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
 
         const files = req.files as { [fieldname: string]: Express.Multer.File[] };
         let completeCoverImage = book.coverImage;
+        let oldCoverImagePublicId = '';
         if (files.coverImage) {
+            // Extract and delete old cover image from Cloudinary
+            if (book.coverImage) {
+                const oldCoverFileSplits = book.coverImage.split("/");
+                oldCoverImagePublicId =
+                    oldCoverFileSplits.at(-2) +
+                    "/" +
+                    oldCoverFileSplits.at(-1)?.split(".").at(-2);
+            }
+
             const filename = files.coverImage[0].filename;
             const converMimeType = files.coverImage[0].mimetype.split("/").at(-1);
             const filePath = path.resolve(
@@ -105,7 +115,17 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
         }
 
         let completeFileName = book.file;
+        let oldBookFilePublicId = '';
         if (files.file) {
+            // Extract and delete old book file from Cloudinary
+            if (book.file) {
+                const oldBookFileSplits = book.file.split("/");
+                oldBookFilePublicId =
+                    oldBookFileSplits.at(-2) +
+                    "/" +
+                    oldBookFileSplits.at(-1)?.split(".").at(-2);
+            }
+
             const bookFilePath = path.resolve(
                 __dirname,
                 "../../public/data/uploads/" + files.file[0].filename
@@ -120,6 +140,21 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
 
             completeFileName = uploadResultPdf.secure_url;
             await fs.promises.unlink(bookFilePath);
+        }
+
+        // Delete old files from Cloudinary if new files were uploaded
+        try {
+            if (oldCoverImagePublicId) {
+                await cloudinary.uploader.destroy(oldCoverImagePublicId);
+            }
+            if (oldBookFilePublicId) {
+                await cloudinary.uploader.destroy(oldBookFilePublicId, {
+                    resource_type: "raw",
+                });
+            }
+        } catch (deleteError) {
+            console.error("Error deleting old files from Cloudinary:", deleteError);
+            // Non-critical error, so we continue with the update
         }
 
         const updatedBook = await bookModel.findOneAndUpdate(
