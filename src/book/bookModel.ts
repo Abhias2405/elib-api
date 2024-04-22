@@ -11,6 +11,10 @@ const bookSchema = new mongoose.Schema<Book>(
             type: String,
             require: true,
         },
+        writer: {
+            type: String,
+            require: true,
+        },
         author: {
             type: mongoose.Schema.Types.ObjectId,
             // add ref

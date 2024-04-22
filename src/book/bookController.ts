@@ -7,7 +7,7 @@ import bookModel from "./bookModel";
 import { AuthRequest } from "../middlewares/authenticate";
 
 const createBook = async (req: Request, res: Response, next: NextFunction) => {
-    const { title, genre, description } = req.body;
+    const { title, genre, description, writer } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const coverImageMimeType = files.coverImage[0].mimetype.split("/").at(-1);
@@ -48,6 +48,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
             title,
             description,
             genre,
+            writer,
             author: _req.userId,
             coverImage: uploadResult.secure_url,
             file: bookFileUploadResult.secure_url,
@@ -69,7 +70,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 const updateBook = async (req: Request, res: Response, next: NextFunction) => {
-    const { title, description, genre } = req.body;
+    const { title, description, genre, writer } = req.body;
     const bookId = req.params.bookId;
 
     try {
@@ -163,6 +164,7 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
                 title,
                 description,
                 genre,
+                writer,
                 coverImage: completeCoverImage,
                 file: completeFileName,
             },

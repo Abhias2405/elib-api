@@ -4,6 +4,7 @@ export interface Book {
   _id: string;
   title: string;
   description: string;
+  writer: string;
   author: User;
   genre: string;
   coverImage: string;
