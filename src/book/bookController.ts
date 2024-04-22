@@ -262,4 +262,31 @@ const deleteBook = async (req: Request, res: Response, next: NextFunction) => {
     }
 };
 
-export { createBook, updateBook, listBooks, getSingleBook, deleteBook };
+const getUserBooks = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const _req = req as AuthRequest;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const skipIndex = (page - 1) * limit;
+
+        const totalBooks = await bookModel.countDocuments({ author: _req.userId });
+        const books = await bookModel
+            .find({ author: _req.userId })
+            .populate("author", "name")
+            .skip(skipIndex)
+            .limit(limit)
+            .sort({ createdAt: -1 }); // Sort by newest first
+
+        res.json({
+            books,
+            currentPage: page,
+            totalPages: Math.ceil(totalBooks / limit),
+            totalBooks,
+        });
+    } catch (err) {
+        console.error("Error during fetching user books:", err);
+        return next(createHttpError(500, "Error while fetching your books."));
+    }
+};
+
+export { createBook, updateBook, listBooks, getSingleBook, deleteBook, getUserBooks };

@@ -6,6 +6,7 @@ import {
   getSingleBook,
   listBooks,
   updateBook,
+  getUserBooks,
 } from "./bookController";
 import multer from "multer";
 import authenticate from "../middlewares/authenticate";
@@ -15,9 +16,9 @@ const bookRouter = express.Router();
 // file store local ->
 const upload = multer({
   dest: path.resolve(__dirname, "../../public/data/uploads"),
-  
-  limits: { fileSize: 10 * 1024 * 1024  }, // 10mb 10 * 1024 * 1024
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10mb 10 * 1024 * 1024
 });
+
 // routes
 // /api/books
 bookRouter.post(
@@ -41,9 +42,8 @@ bookRouter.patch(
 );
 
 bookRouter.get("/", listBooks);
-
+bookRouter.get("/user-books", authenticate, getUserBooks); // New endpoint
 bookRouter.get("/:bookId", getSingleBook);
-
 bookRouter.delete("/:bookId", authenticate, deleteBook);
 
 export default bookRouter;
