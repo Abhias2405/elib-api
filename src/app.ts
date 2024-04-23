@@ -17,9 +17,6 @@ app.use(express.json());
 //Routes
 
 app.get("/", (req, res, next) => {
-  const error = createHttpError(400, "Something went wrong.");
-  throw error;
-  
     res.json({ message: "Welcome to elib apis." });
 });
 
