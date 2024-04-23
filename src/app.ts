@@ -9,7 +9,7 @@ import { config } from "./config/config";
 const app = express();
 
 app.use(cors({
-  origin: config.frontendDomain,
+  origin: config.frontendDomain || "*",
 }));
 
 app.use(express.json());
