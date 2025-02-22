@@ -8,9 +8,13 @@ import { config } from "./config/config";
 
 const app = express();
 
+const allowedOrigins = config.frontendDomain ? config.frontendDomain.split(',') : ["*"];
+
 app.use(cors({
-  origin: config.frontendDomain || "*",
+  origin: allowedOrigins,
+  credentials: true
 }));
+
 
 app.use(express.json());
 
